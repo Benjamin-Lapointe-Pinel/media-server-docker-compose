@@ -1,0 +1,149 @@
+services:
+  jellyfin:
+    image: jellyfin/jellyfin
+    container_name: jellyfin
+    user: 1001:1001
+    group_add:
+      - 105
+    volumes:
+      - /home/media/.config/jellyfin:/config
+      - /home/media/.cache/jellyfin:/cache
+      - type: bind
+        source: /mnt/media
+        target: /media
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+      - /dev/dri/card0:/dev/dri/card0
+    ports:
+      - 8096:8096
+    restart: always
+    # Optional - alternative address used for autodiscovery
+    # environment:
+    #  - JELLYFIN_PublishedServerUrl=http://example.com
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=Etc/UTC
+    volumes:
+      - /home/media/.config/prowlarr:/config
+    ports:
+      - 9696:9696
+    restart: always
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=Etc/UTC
+    volumes:
+      - /home/media/.config/radarr:/config
+      - /mnt/media/Movies:/movies
+      - /mnt/media/Downloads:/downloads
+    ports:
+      - 7878:7878
+    restart: always
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=Etc/UTC
+    volumes:
+      - /home/media/.config/sonarr:/config
+      - /mnt/media/Shows:/tv
+      - /mnt/media/Downloads:/downloads
+    ports:
+      - 8989:8989
+    restart: always
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    ports:
+      - 8191:8191
+    restart: always
+
+#  transmission:
+#    image: lscr.io/linuxserver/transmission:latest
+#    container_name: transmission
+#    secrets:
+#      - transmission_user
+#      - transmission_pass
+#    environment:
+#      - PUID=1001
+#      - PGID=1001
+#      - TZ=Etc/UTC
+#      - FILE__USER=/run/secrets/transmission_user
+#      - FILE__PASS=/run/secrets/transmission_pass
+#    volumes:
+#      - /home/media/.config/transmission:/config
+#      - /mnt/media/Downloads:/downloads
+#    ports:
+#      - 9091:9091
+#      - 51413:51413
+#      - 51413:51413/udp
+#    restart: always
+
+#  transmission-openvpn:
+#    cap_add:
+#      - NET_ADMIN
+#    volumes:
+#      - '/your/storage/path/:/data'
+#      - '/your/config/path/:/config'
+#    environment:
+#      - OPENVPN_PROVIDER=PIA
+#      - OPENVPN_CONFIG=france
+#      - OPENVPN_USERNAME=user
+#      - OPENVPN_PASSWORD=pass
+#      - LOCAL_NETWORK=192.168.0.0/16
+#    logging:
+#      driver: json-file
+#      options:
+#        max-size: 10m
+#    ports:
+#      - '9091:9091'
+#    image: haugene/transmission-openvpn
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    environment:
+      - LOG_LEVEL=debug
+      - TZ=Etc/UTC
+    ports:
+      - 5055:5055
+    volumes:
+      - /home/media/.config/jellyseerr:/app/config
+    restart: always
+
+  glances:
+    image: nicolargo/glances:latest
+    container_name: glances
+    secrets:
+      - source: glances_password
+        target: /root/.config/glances/glances.pwd
+    ports:
+      - 61208:61208
+    pid: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/os-release:/etc/os-release:ro
+    environment:
+      - "GLANCES_OPT=-w --password"
+    restart: always
+
+secrets:
+  transmission_user:
+    file: /home/media/secrets/transmission_user
+  transmission_pass:
+    file: /home/media/secrets/transmission_pass
+  glances_password:
+    file: /home/media/secrets/glances_password
