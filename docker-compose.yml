@@ -17,9 +17,6 @@ services:
     ports:
       - 8096:8096
     restart: always
-    # Optional - alternative address used for autodiscovery
-    # environment:
-    #  - JELLYFIN_PublishedServerUrl=http://example.com
 
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
@@ -27,7 +24,7 @@ services:
     environment:
       - PUID=1001
       - PGID=1001
-      - TZ=Etc/UTC
+      - TZ=Canada/Eastern
     volumes:
       - /home/media/.config/prowlarr:/config
     ports:
@@ -40,7 +37,7 @@ services:
     environment:
       - PUID=1001
       - PGID=1001
-      - TZ=Etc/UTC
+      - TZ=Canada/Eastern
     volumes:
       - /home/media/.config/radarr:/config
       - /mnt/media/Movies:/movies
@@ -55,7 +52,7 @@ services:
     environment:
       - PUID=1001
       - PGID=1001
-      - TZ=Etc/UTC
+      - TZ=Canada/Eastern
     volumes:
       - /home/media/.config/sonarr:/config
       - /mnt/media/Shows:/tv
@@ -71,53 +68,12 @@ services:
       - 8191:8191
     restart: always
 
-#  transmission:
-#    image: lscr.io/linuxserver/transmission:latest
-#    container_name: transmission
-#    secrets:
-#      - transmission_user
-#      - transmission_pass
-#    environment:
-#      - PUID=1001
-#      - PGID=1001
-#      - TZ=Etc/UTC
-#      - FILE__USER=/run/secrets/transmission_user
-#      - FILE__PASS=/run/secrets/transmission_pass
-#    volumes:
-#      - /home/media/.config/transmission:/config
-#      - /mnt/media/Downloads:/downloads
-#    ports:
-#      - 9091:9091
-#      - 51413:51413
-#      - 51413:51413/udp
-#    restart: always
-
-#  transmission-openvpn:
-#    cap_add:
-#      - NET_ADMIN
-#    volumes:
-#      - '/your/storage/path/:/data'
-#      - '/your/config/path/:/config'
-#    environment:
-#      - OPENVPN_PROVIDER=PIA
-#      - OPENVPN_CONFIG=france
-#      - OPENVPN_USERNAME=user
-#      - OPENVPN_PASSWORD=pass
-#      - LOCAL_NETWORK=192.168.0.0/16
-#    logging:
-#      driver: json-file
-#      options:
-#        max-size: 10m
-#    ports:
-#      - '9091:9091'
-#    image: haugene/transmission-openvpn
-
   jellyseerr:
     image: fallenbagel/jellyseerr:latest
     container_name: jellyseerr
     environment:
       - LOG_LEVEL=debug
-      - TZ=Etc/UTC
+      - TZ=Canada/Eastern
     ports:
       - 5055:5055
     volumes:
@@ -140,10 +96,76 @@ services:
       - "GLANCES_OPT=-w --password"
     restart: always
 
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 80:80
+      - 443:443
+      - 443:443/udp
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+      - /home/media/.config/caddy/Caddyfile:/etc/caddy/Caddyfile
+    restart: always
+
+  transmission:
+    image: lscr.io/linuxserver/transmission:latest
+    container_name: transmission
+    network_mode: "service:gluetun"
+    secrets:
+      - transmission_user
+      - transmission_pass
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=Etc/UTC
+      - FILE__USER=/run/secrets/transmission_user
+      - FILE__PASS=/run/secrets/transmission_pass
+    volumes:
+      - /home/media/.config/transmission:/config
+      - /mnt/media/Downloads:/downloads
+    restart: always
+
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - 8888:8888/tcp
+      - 8388:8388/tcp
+      - 8388:8388/udp
+      - 9091:9091
+      - 51413:51413
+      - 51413:51413/udp
+    volumes:
+      - /home/media/.config/gluetun:/gluetun
+    secrets:
+      - openvpn_user
+    environment:
+      - VPN_SERVICE_PROVIDER=mullvad
+      - VPN_TYPE=openvpn
+      - OPENVPN_USER_SECRETFILE=/run/secrets/openvpn_user
+      - TZ=Canada/Eastern
+      - UPDATER_PERIOD=24h
+      - SERVER_COUNTRIES=Canada,Netherlands,Sweden,Switzerland
+    restart: always
+
+volumes:
+  caddy_data:
+  caddy_config:
+
 secrets:
   transmission_user:
-    file: /home/media/secrets/transmission_user
+    file: ./secrets/transmission_user
   transmission_pass:
-    file: /home/media/secrets/transmission_pass
+    file: ./secrets/transmission_pass
   glances_password:
-    file: /home/media/secrets/glances_password
+    file: ./secrets/glances_password
+  openvpn_user:
+    file: ./secrets/openvpn_user
