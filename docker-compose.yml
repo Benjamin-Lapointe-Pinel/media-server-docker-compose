@@ -15,8 +15,11 @@ services:
       - /dev/dri/renderD128:/dev/dri/renderD128
       - /dev/dri/card0:/dev/dri/card0
     ports:
-      - 8096:8096
+      - 8096:8096/tcp
+      - 7359:7359/udp
     restart: unless-stopped
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
 
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
@@ -123,8 +126,10 @@ services:
     volumes:
       - caddy_data:/data
       - caddy_config:/config
-      - /home/media/.config/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - /home/media/.config/caddy:/etc/caddy
     restart: unless-stopped
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
 
   transmission:
     image: lscr.io/linuxserver/transmission:latest
@@ -161,11 +166,13 @@ services:
     volumes:
       - /home/media/.config/gluetun:/gluetun
     secrets:
-      - openvpn_user
+      - wireguard_private_key
+      - wireguard_addresses
     environment:
       - VPN_SERVICE_PROVIDER=mullvad
-      - VPN_TYPE=openvpn
-      - OPENVPN_USER_SECRETFILE=/run/secrets/openvpn_user
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=/run/secrets/wireguard_private_key
+      - WIREGUARD_ADDRESSES=/run/secrets/wireguard_addresses
       - TZ=Canada/Eastern
       - UPDATER_PERIOD=24h
       - SERVER_COUNTRIES=Canada,Netherlands,Sweden,Switzerland
@@ -210,5 +217,7 @@ secrets:
     file: ./secrets/transmission_pass
   glances_password:
     file: ./secrets/glances_password
-  openvpn_user:
-    file: ./secrets/openvpn_user
+  wireguard_addresses:
+    file: ./secrets/wireguard_addresses
+  wireguard_private_key:
+    file: ./secrets/wireguard_private_key
